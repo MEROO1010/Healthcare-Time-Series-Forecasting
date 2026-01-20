@@ -13,6 +13,9 @@ import pandas as pd
 from models.arima_model import train_arima
 from models.prophet_model import train_prophet
 from evaluation.metrics import evaluate
+
+from models.lstm_model import prepare_lstm_data, train_lstm
+import numpy as np
 # -----------------------------
 # Page Config
 # -----------------------------
@@ -43,7 +46,7 @@ test = df.iloc[-TEST_DAYS:]
 st.sidebar.title("⚙️ Model Settings")
 model_choice = st.sidebar.selectbox(
     "Select Forecasting Model",
-    ["ARIMA", "Prophet"]
+    ["ARIMA", "Prophet", "LSTM"]
 )
 
 # -----------------------------
@@ -58,6 +61,20 @@ elif model_choice == "Prophet":
     future = model.make_future_dataframe(periods=TEST_DAYS)
     forecast_df = model.predict(future)
     forecast = forecast_df.tail(TEST_DAYS)["yhat"].values
+
+elif model_choice == "LSTM":
+    series = df["patient_visits"]
+
+    X, y, scaler = prepare_lstm_data(series)
+    split = len(X) - TEST_DAYS
+
+    X_train, X_test = X[:split], X[split:]
+    y_train, y_test = y[:split], y[split:]
+
+    model = train_lstm(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    forecast = scaler.inverse_transform(predictions).flatten()    
 
 # -----------------------------
 # Evaluation
